@@ -1,0 +1,135 @@
+/**
+ * Data Store - Manages expense data persistence using localStorage.
+ */
+const Store = (() => {
+  const STORAGE_KEY = 'pb_expenses';
+  let _expenses = [];
+
+  function init() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) { try { _expenses = JSON.parse(saved); } catch(e) { _expenses = []; } }
+    return _expenses;
+  }
+
+  function _save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(_expenses)); }
+
+  function addExpense(expense) {
+    const isDuplicate = _expenses.some(e =>
+      e.amount === expense.amount && e.date === expense.date &&
+      e.description === expense.description && e.type === expense.type
+    );
+    if (isDuplicate) return false;
+    _expenses.unshift(expense);
+    _save();
+    return true;
+  }
+
+  function addMultiple(expenses) {
+    let added = 0;
+    expenses.forEach(exp => { if (addExpense(exp)) added++; });
+    return added;
+  }
+
+  function getAll() { return [..._expenses]; }
+
+  function getFiltered({ startDate, endDate, category, type, search } = {}) {
+    let result = [..._expenses];
+    if (startDate) result = result.filter(e => new Date(e.date) >= new Date(startDate));
+    if (endDate) {
+      const end = new Date(endDate); end.setHours(23,59,59,999);
+      result = result.filter(e => new Date(e.date) <= end);
+    }
+    if (category && category !== 'All') result = result.filter(e => e.category === category);
+    if (type && type !== 'All') result = result.filter(e => e.type === type);
+    if (search) {
+      const s = search.toLowerCase();
+      result = result.filter(e =>
+        (e.description||'').toLowerCase().includes(s) ||
+        (e.category||'').toLowerCase().includes(s) ||
+        (e.rawSms||'').toLowerCase().includes(s)
+      );
+    }
+    return result;
+  }
+
+  function updateExpense(id, updates) {
+    const i = _expenses.findIndex(e => e.id === id);
+    if (i === -1) return false;
+    _expenses[i] = { ..._expenses[i], ...updates };
+    _save();
+    return true;
+  }
+
+  function deleteExpense(id) {
+    const i = _expenses.findIndex(e => e.id === id);
+    if (i === -1) return false;
+    _expenses.splice(i, 1);
+    _save();
+    return true;
+  }
+
+  function getStats(filters = {}) {
+    const expenses = getFiltered(filters);
+    const totalDebit = expenses.filter(e => e.type === 'debit').reduce((s, e) => s + e.amount, 0);
+    const totalCredit = expenses.filter(e => e.type === 'credit').reduce((s, e) => s + e.amount, 0);
+
+    const categoryBreakdown = {};
+    expenses.filter(e => e.type === 'debit').forEach(e => {
+      const cat = e.category || 'Other';
+      categoryBreakdown[cat] = (categoryBreakdown[cat] || 0) + e.amount;
+    });
+
+    const dailySpending = {};
+    const now = new Date();
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now); d.setDate(d.getDate() - i);
+      dailySpending[d.toISOString().split('T')[0]] = 0;
+    }
+    expenses.filter(e => e.type === 'debit').forEach(e => {
+      const key = new Date(e.date).toISOString().split('T')[0];
+      if (dailySpending.hasOwnProperty(key)) dailySpending[key] += e.amount;
+    });
+
+    const monthlyData = {};
+    expenses.forEach(e => {
+      const d = new Date(e.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      if (!monthlyData[key]) monthlyData[key] = { debit: 0, credit: 0 };
+      monthlyData[key][e.type] += e.amount;
+    });
+
+    const latestWithBal = expenses.find(e => e.balance != null);
+    const topCat = Object.entries(categoryBreakdown).sort((a,b) => b[1]-a[1])[0];
+
+    return {
+      totalDebit, totalCredit, netBalance: totalCredit - totalDebit,
+      latestBalance: latestWithBal ? latestWithBal.balance : null,
+      transactionCount: expenses.length,
+      categoryBreakdown, dailySpending, monthlyData,
+      topCategory: topCat ? { name: topCat[0], amount: topCat[1] } : null
+    };
+  }
+
+  function exportCSV(filters = {}) {
+    const expenses = getFiltered(filters);
+    const h = 'Date,Time,Type,Amount,Description,Category,Account,Balance';
+    const rows = expenses.map(e => {
+      const d = new Date(e.date);
+      return [d.toLocaleDateString('en-GB'), e.time||'', e.type==='debit'?'Debit':'Credit',
+        e.amount.toFixed(2), e.description, e.category||'', e.account||'',
+        e.balance!=null?e.balance.toFixed(2):''].join(',');
+    });
+    return [h, ...rows].join('\n');
+  }
+
+  function exportJSON() { return JSON.stringify(_expenses, null, 2); }
+  function importJSON(json) {
+    try { const d = JSON.parse(json); return Array.isArray(d) ? addMultiple(d) : 0; }
+    catch(e) { return 0; }
+  }
+  function clearAll() { _expenses = []; _save(); }
+  function getCount() { return _expenses.length; }
+
+  return { init, addExpense, addMultiple, getAll, getFiltered, updateExpense,
+    deleteExpense, getStats, getCount, exportCSV, exportJSON, importJSON, clearAll };
+})();
