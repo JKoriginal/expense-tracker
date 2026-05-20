@@ -7,15 +7,15 @@
   --bg-secondary: #111a2e;
   --bg-card: rgba(17, 26, 46, 0.7);
   --bg-card-hover: rgba(22, 34, 60, 0.85);
-  --glass-border: rgba(14, 165, 142, 0.12);
-  --glass-border-hover: rgba(14, 165, 142, 0.3);
+  --glass-border: rgba(225, 29, 72, 0.12);
+  --glass-border-hover: rgba(225, 29, 72, 0.3);
   --glass-blur: 20px;
 
-  /* Teal / Emerald accent palette */
-  --accent: #0ea58e;
-  --accent-light: #14d4ae;
-  --accent-glow: rgba(14, 165, 142, 0.2);
-  --accent-gradient: linear-gradient(135deg, #0ea58e, #10b981);
+  /* Red / Rose accent palette */
+  --accent: #e11d48;
+  --accent-light: #fb7185;
+  --accent-glow: rgba(225, 29, 72, 0.2);
+  --accent-gradient: linear-gradient(135deg, #dc2626, #e11d48);
 
   --expense: #f87171;
   --expense-soft: rgba(248, 113, 113, 0.12);
@@ -47,7 +47,7 @@ body {
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(14, 165, 142, 0.3); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: rgba(225, 29, 72, 0.3); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
 /* ===== HEADER ===== */
@@ -107,15 +107,15 @@ body {
   box-shadow: 0 4px 15px var(--accent-glow);
 }
 .btn-primary:hover {
-  box-shadow: 0 6px 25px rgba(14, 165, 142, 0.4);
+  box-shadow: 0 6px 25px rgba(225, 29, 72, 0.4);
   transform: translateY(-2px);
 }
 .btn-glow {
-  border-color: rgba(14, 165, 142, 0.25);
+  border-color: rgba(225, 29, 72, 0.25);
   color: var(--accent-light);
 }
 .btn-glow:hover {
-  background: rgba(14, 165, 142, 0.1);
+  background: rgba(225, 29, 72, 0.1);
   border-color: var(--accent);
   box-shadow: 0 0 20px var(--accent-glow);
 }
@@ -227,7 +227,7 @@ body {
 }
 .stat-icon-wrap.expense-bg { background: var(--expense-soft); color: var(--expense); }
 .stat-icon-wrap.income-bg { background: var(--income-soft); color: var(--income); }
-.stat-icon-wrap.balance-bg { background: rgba(14,165,142,0.12); color: var(--accent-light); }
+.stat-icon-wrap.balance-bg { background: rgba(225,29,72,0.12); color: var(--accent-light); }
 .stat-icon-wrap.topcat-bg { background: var(--amber-soft); color: var(--amber); }
 
 .stat-label {
@@ -278,7 +278,7 @@ body {
   align-items: center;
   padding: 0.8rem 1.4rem;
   border-bottom: 1px solid var(--glass-border);
-  background: rgba(14, 165, 142, 0.02);
+  background: rgba(225, 29, 72, 0.02);
 }
 .filter-group {
   display: flex; align-items: center; gap: 0.4rem;
@@ -343,7 +343,7 @@ body {
   display: flex; align-items: center; gap: 0.5rem;
 }
 .tx-count {
-  background: rgba(14, 165, 142, 0.15);
+  background: rgba(225, 29, 72, 0.15);
   color: var(--accent-light);
   padding: 0.15rem 0.5rem;
   border-radius: 20px;
@@ -362,7 +362,7 @@ body {
   cursor: pointer;
 }
 .tx-item:hover {
-  background: rgba(14, 165, 142, 0.04);
+  background: rgba(225, 29, 72, 0.04);
 }
 .tx-icon {
   width: 40px; height: 40px;
@@ -502,7 +502,7 @@ body {
 }
 @keyframes pulse-glow {
   0%, 100% { box-shadow: 0 8px 30px var(--accent-glow); }
-  50% { box-shadow: 0 8px 50px rgba(14, 165, 142, 0.45); }
+  50% { box-shadow: 0 8px 50px rgba(225, 29, 72, 0.45); }
 }
 @keyframes countUp { from { opacity: 0; } to { opacity: 1; } }
 .fade-in { animation: fadeInUp 0.5s ease-out forwards; }
@@ -514,7 +514,7 @@ body {
 /* ===== LOADING ===== */
 .loading-spinner {
   width: 40px; height: 40px;
-  border: 3px solid rgba(14, 165, 142, 0.2);
+  border: 3px solid rgba(225, 29, 72, 0.2);
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;

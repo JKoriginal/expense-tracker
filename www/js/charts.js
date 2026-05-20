@@ -54,7 +54,7 @@ const Charts = (() => {
             backgroundColor: 'rgba(15, 23, 42, 0.95)',
             titleColor: '#e2e8f0',
             bodyColor: '#94a3b8',
-            borderColor: 'rgba(79, 124, 255, 0.3)',
+            borderColor: 'rgba(225, 29, 72, 0.3)',
             borderWidth: 1,
             padding: 12,
             titleFont: { family: 'Inter', weight: '600' },
@@ -81,8 +81,8 @@ const Charts = (() => {
     const data = Object.values(dailySpending);
     const ctx = canvas.getContext('2d');
     const gradient = ctx.createLinearGradient(0, 0, 0, 250);
-    gradient.addColorStop(0, 'rgba(79, 124, 255, 0.3)');
-    gradient.addColorStop(1, 'rgba(79, 124, 255, 0.01)');
+    gradient.addColorStop(0, 'rgba(225, 29, 72, 0.3)');
+    gradient.addColorStop(1, 'rgba(225, 29, 72, 0.01)');
 
     trendChart = new Chart(canvas, {
       type: 'line',
@@ -91,14 +91,14 @@ const Charts = (() => {
         datasets: [{
           label: 'Daily Spending',
           data,
-          borderColor: '#4f7cff',
+          borderColor: '#e11d48',
           backgroundColor: gradient,
           fill: true,
           tension: 0.4,
           borderWidth: 2.5,
           pointRadius: 0,
           pointHoverRadius: 6,
-          pointHoverBackgroundColor: '#4f7cff',
+          pointHoverBackgroundColor: '#e11d48',
           pointHoverBorderColor: '#fff',
           pointHoverBorderWidth: 2
         }]
@@ -124,7 +124,7 @@ const Charts = (() => {
           tooltip: {
             backgroundColor: 'rgba(15, 23, 42, 0.95)',
             titleColor: '#e2e8f0', bodyColor: '#94a3b8',
-            borderColor: 'rgba(79, 124, 255, 0.3)', borderWidth: 1,
+            borderColor: 'rgba(225, 29, 72, 0.3)', borderWidth: 1,
             padding: 12,
             titleFont: { family: 'Inter', weight: '600' },
             bodyFont: { family: 'Inter' },
@@ -196,7 +196,7 @@ const Charts = (() => {
           tooltip: {
             backgroundColor: 'rgba(15, 23, 42, 0.95)',
             titleColor: '#e2e8f0', bodyColor: '#94a3b8',
-            borderColor: 'rgba(79, 124, 255, 0.3)', borderWidth: 1,
+            borderColor: 'rgba(225, 29, 72, 0.3)', borderWidth: 1,
             padding: 12,
             callbacks: {
               label: ctx => ` Rs. ${ctx.parsed.y.toLocaleString('en-US', {minimumFractionDigits: 2})}`
