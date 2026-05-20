@@ -20,8 +20,8 @@ const SmsParser = (() => {
 
     const text = smsBody.trim();
 
-    // Check if it's a People's Bank transaction SMS
-    if (!isPeoplesBankSms(text)) return null;
+    // Check if it's a valid transaction SMS (debit/credit with amount)
+    if (!isTransactionSms(text)) return null;
 
     try {
       const account = extractAccount(text);
@@ -32,7 +32,7 @@ const SmsParser = (() => {
       const date = extractDate(text);
       const balance = extractBalance(text);
 
-      if (amount === null) return null;
+      if (amount === null || amount <= 0) return null;
 
       // Build date-time
       let dateTime = null;
@@ -45,8 +45,13 @@ const SmsParser = (() => {
         dateTime = new Date();
       }
 
-      // Generate unique ID from content hash
-      const id = generateId(text);
+      // Validate the date is sensible
+      if (isNaN(dateTime.getTime())) {
+        dateTime = smsDate ? new Date(smsDate) : new Date();
+      }
+
+      // Generate deterministic unique ID from SMS content (not time-based)
+      const id = generateId(account, type, amount, date || '', time || '', description);
 
       return {
         id,
@@ -69,7 +74,7 @@ const SmsParser = (() => {
   }
 
   /**
-   * Parse multiple SMS messages
+   * Parse multiple SMS messages (from native reader)
    */
   function parseMultiple(smsList) {
     return smsList
@@ -92,16 +97,24 @@ const SmsParser = (() => {
   }
 
   /**
-   * Check if SMS is from People's Bank
+   * Check if SMS is a valid transaction message (debit or credit with an amount).
+   * This is less strict than before — we trust the address filter in SmsReader
+   * to ensure we only get PeoplesBank messages.
    */
-  function isPeoplesBankSms(text) {
+  function isTransactionSms(text) {
     const lower = text.toLowerCase();
     return (
       lower.includes('your a/c') &&
       lower.includes('rs.') &&
-      (lower.includes('debited') || lower.includes('credited')) &&
-      lower.includes('av_bal')
+      (lower.includes('debited') || lower.includes('credited'))
     );
+  }
+
+  /**
+   * Legacy alias kept for backward compatibility
+   */
+  function isPeoplesBankSms(text) {
+    return isTransactionSms(text);
   }
 
   /**
@@ -124,16 +137,16 @@ const SmsParser = (() => {
 
   /**
    * Extract amount: "Rs. 1525.00" or "Rs. 1,525.00"
+   * Specifically matches the amount after "debited by" or "credited by" to avoid
+   * picking up the balance amount instead.
    */
   function extractAmount(text) {
-    // Match the first Rs. amount (transaction amount, not balance)
-    const match = text.match(/(?:debited|credited)\s+by\s+Rs\.\s*([\d,]+\.?\d*)/i);
+    // Primary: match amount right after "debited by Rs." or "credited by Rs."
+    const match = text.match(/(?:debited|credited)\s+by\s+Rs\.?\s*([0-9][0-9,]*\.?\d*)/i);
     if (match) {
       return parseFloat(match[1].replace(/,/g, ''));
     }
-    // Fallback: first Rs. amount
-    const fallback = text.match(/Rs\.\s*([\d,]+\.?\d*)/i);
-    return fallback ? parseFloat(fallback[1].replace(/,/g, '')) : null;
+    return null;
   }
 
   /**
@@ -180,31 +193,46 @@ const SmsParser = (() => {
   }
 
   /**
-   * Extract available balance: "Av_Bal: Rs. 89996.98"
+   * Extract available balance: "Av_Bal: Rs. 89996.98" or "Av.Bal: Rs. 89996.98"
+   * Handles various balance label formats from PeoplesBank SMS
    */
   function extractBalance(text) {
-    const match = text.match(/Av_Bal:\s*Rs\.\s*([\d,]+\.?\d*)/i);
-    return match ? parseFloat(match[1].replace(/,/g, '')) : null;
+    // Try multiple known balance label patterns
+    const patterns = [
+      /Av_Bal[:\s]+Rs\.?\s*([0-9][0-9,]*\.?\d*)/i,
+      /Av\.?\s*Bal[:\s]+Rs\.?\s*([0-9][0-9,]*\.?\d*)/i,
+      /Available\s+Balance[:\s]+Rs\.?\s*([0-9][0-9,]*\.?\d*)/i,
+      /Avl\.?\s*Bal[:\s]+Rs\.?\s*([0-9][0-9,]*\.?\d*)/i
+    ];
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) return parseFloat(match[1].replace(/,/g, ''));
+    }
+    return null;
   }
 
   /**
-   * Generate unique ID from SMS content
+   * Generate a deterministic unique ID from transaction details.
+   * This ensures the same SMS always produces the same ID,
+   * preventing duplicates when re-scanning.
    */
-  function generateId(text) {
+  function generateId(account, type, amount, date, time, description) {
+    const raw = `${account}|${type}|${amount}|${date}|${time}|${description}`;
     let hash = 0;
-    for (let i = 0; i < text.length; i++) {
-      const char = text.charCodeAt(i);
+    for (let i = 0; i < raw.length; i++) {
+      const char = raw.charCodeAt(i);
       hash = ((hash << 5) - hash) + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
-    return 'txn_' + Math.abs(hash).toString(36) + '_' + Date.now().toString(36);
+    return 'txn_' + Math.abs(hash).toString(36);
   }
 
   return {
     parse,
     parseMultiple,
     parseManualInput,
-    isPeoplesBankSms
+    isPeoplesBankSms,
+    isTransactionSms
   };
 })();
 

@@ -15,8 +15,9 @@ const Store = (() => {
 
   function addExpense(expense) {
     const isDuplicate = _expenses.some(e =>
-      e.amount === expense.amount && e.date === expense.date &&
-      e.description === expense.description && e.type === expense.type
+      e.id === expense.id ||
+      (e.amount === expense.amount && e.date === expense.date &&
+       e.description === expense.description && e.type === expense.type)
     );
     if (isDuplicate) return false;
     _expenses.unshift(expense);
@@ -98,7 +99,13 @@ const Store = (() => {
       monthlyData[key][e.type] += e.amount;
     });
 
-    const latestWithBal = expenses.find(e => e.balance != null);
+    // Current balance: always use the most recent transaction by date from ALL data
+    // (not filtered), since the balance represents the latest account state
+    const allSorted = [..._expenses]
+      .filter(e => e.balance != null)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+    const latestWithBal = allSorted.length > 0 ? allSorted[0] : null;
+
     const topCat = Object.entries(categoryBreakdown).sort((a,b) => b[1]-a[1])[0];
 
     return {

@@ -52,7 +52,7 @@ const SmsReader = (() => {
   }
 
   /**
-   * Read all SMS messages from inbox
+   * Read all SMS messages from inbox (unfiltered)
    * Returns array of { address, body, date, type }
    */
   async function readAllSms() {
@@ -71,22 +71,24 @@ const SmsReader = (() => {
   }
 
   /**
-   * Read and filter only People's Bank SMS messages
-   * Filters by address 'PeoplesBank' and transaction keywords
+   * Read ONLY People's Bank SMS messages using native address filter.
+   * Uses the plugin's address filter to fetch only messages from 'PeoplesBank' sender.
+   * Returns ALL messages from that sender - parsing/validation is done by SmsParser.
    */
   async function readBankSms() {
-    const allSms = await readAllSms();
-    return allSms.filter(sms => {
-      if (sms.address !== 'PeoplesBank') {
-        return false;
-      }
-      const body = (sms.body || '').toLowerCase();
-      return (
-        body.includes('your a/c') &&
-        body.includes('rs.') &&
-        (body.includes('debited') || body.includes('credited'))
-      );
-    });
+    if (!_isNative || !_smsPlugin) return [];
+    try {
+      const result = await _smsPlugin.getSMSList({
+        filter: {
+          address: 'PeoplesBank',
+          maxCount: 10000
+        }
+      });
+      return result.smsList || [];
+    } catch (e) {
+      console.error('Failed to read PeoplesBank SMS:', e);
+      return [];
+    }
   }
 
   /**
