@@ -103,11 +103,15 @@ const SmsParser = (() => {
    */
   function isTransactionSms(text) {
     const lower = text.toLowerCase();
-    return (
-      lower.includes('your a/c') &&
-      lower.includes('rs.') &&
-      (lower.includes('debited') || lower.includes('credited'))
-    );
+    
+    // Check for currency indicator (Rs. or LKR)
+    const hasCurrency = lower.includes('rs.') || lower.includes('lkr');
+    
+    // Check for standard transaction keywords or card payment keywords
+    const isDebitOrCredit = lower.includes('debited') || lower.includes('credited');
+    const isCardPayment = lower.includes('card payment') || lower.includes('card transaction') || lower.includes('payment successful') || lower.includes('purchase successful');
+    
+    return hasCurrency && (isDebitOrCredit || isCardPayment);
   }
 
   /**
@@ -118,11 +122,14 @@ const SmsParser = (() => {
   }
 
   /**
-   * Extract account number: "A/C 046-2001****10"
+   * Extract account number: "A/C 046-2001****10" or "Card ending 1234"
    */
   function extractAccount(text) {
     const match = text.match(/A\/C\s+([\d\-\*]+)/i);
-    return match ? match[1] : null;
+    if (match) return match[1];
+
+    const cardMatch = text.match(/card\s+(?:ending|no\.)?\s*([\d\-\*]+)/i);
+    return cardMatch ? `Card ${cardMatch[1]}` : null;
   }
 
   /**
@@ -130,27 +137,39 @@ const SmsParser = (() => {
    */
   function extractType(text) {
     const lower = text.toLowerCase();
-    if (lower.includes('debited')) return 'debit';
-    if (lower.includes('credited')) return 'credit';
+    if (lower.includes('credited') || lower.includes('refund')) return 'credit';
     return 'debit';
   }
 
   /**
-   * Extract amount: "Rs. 1525.00" or "Rs. 1,525.00"
-   * Specifically matches the amount after "debited by" or "credited by" to avoid
-   * picking up the balance amount instead.
+   * Extract amount: "Rs. 1525.00", "LKR 1,500.00" etc.
    */
   function extractAmount(text) {
     // Primary: match amount right after "debited by Rs." or "credited by Rs."
-    const match = text.match(/(?:debited|credited)\s+by\s+Rs\.?\s*([0-9][0-9,]*\.?\d*)/i);
+    let match = text.match(/(?:debited|credited)\s+by\s+Rs\.?\s*([0-9][0-9,]*\.?\d*)/i);
     if (match) {
       return parseFloat(match[1].replace(/,/g, ''));
     }
+
+    // Secondary: match LKR or Rs. right after transaction words
+    match = text.match(/(?:successful|success|payment|charged|spent)\s*,?\s*(?:LKR|Rs\.?)\s*([0-9][0-9,]*\.?\d*)/i);
+    if (match) {
+      return parseFloat(match[1].replace(/,/g, ''));
+    }
+
+    // Fallback: match any LKR or Rs. before the balance keyword
+    const parts = text.split(/(?:Av_Bal|Av\.?\s*Bal|Available\s+Balance|Avl\.?\s*Bal)/i);
+    const firstPart = parts[0];
+    const amountMatch = firstPart.match(/(?:LKR|Rs\.?)\s*([0-9][0-9,]*\.?\d*)/i);
+    if (amountMatch) {
+      return parseFloat(amountMatch[1].replace(/,/g, ''));
+    }
+
     return null;
   }
 
   /**
-   * Extract description from parentheses: "(LPAY TFR @11:41 18/05/2026)"
+   * Extract description from parentheses, or "at [Merchant]" for card payments
    */
   function extractDescription(text) {
     const match = text.match(/\(([^@)]+?)(?:\s*@)/);
@@ -164,45 +183,62 @@ const SmsParser = (() => {
         .replace(/@\d{2}:\d{2}/, '')
         .replace(/\d{2}\/\d{2}\/\d{4}/, '')
         .trim();
-      return desc || 'Transaction';
+      if (desc) return desc;
     }
+
+    // Card payment merchant pattern (e.g. "... at KEG PORT on ...")
+    const atMatch = text.match(/at\s+([^,.]+?)(?:\s+on|\d{2}\/\d{2}|\.|\s+Avl)/i);
+    if (atMatch) {
+      return atMatch[1].trim();
+    }
+
+    if (text.toLowerCase().includes('card payment')) {
+      return 'Card Payment';
+    }
+
     return 'Transaction';
   }
 
   /**
-   * Extract time: "@11:41"
+   * Extract time: "@11:41" or "11:41"
    */
   function extractTime(text) {
-    const match = text.match(/@(\d{2}:\d{2})/);
+    const match = text.match(/(?:@|\s|^)(\d{2}:\d{2})/);
     return match ? match[1] : null;
   }
 
   /**
-   * Extract date: "18/05/2026"
+   * Extract date: "18/05/2026" or "18/05/26"
    */
   function extractDate(text) {
-    // Try DD/MM/YYYY
-    let match = text.match(/(\d{2}\/\d{2}\/\d{4})/);
-    if (match) return match[1];
+    // Try DD/MM/YYYY or DD/MM/YY
+    let match = text.match(/(\d{2})\/(\d{2})\/(\d{4}|\d{2})/);
+    if (match) {
+      let year = match[3];
+      if (year.length === 2) year = '20' + year;
+      return `${match[1]}/${match[2]}/${year}`;
+    }
 
-    // Try DD-MM-YYYY
-    match = text.match(/(\d{2}-\d{2}-\d{4})/);
-    if (match) return match[1].replace(/-/g, '/');
+    // Try DD-MM-YYYY or DD-MM-YY
+    match = text.match(/(\d{2})-(\d{2})-(\d{4}|\d{2})/);
+    if (match) {
+      let year = match[3];
+      if (year.length === 2) year = '20' + year;
+      return `${match[1]}/${match[2]}/${year}`;
+    }
 
     return null;
   }
 
   /**
-   * Extract available balance: "Av_Bal: Rs. 89996.98" or "Av.Bal: Rs. 89996.98"
-   * Handles various balance label formats from PeoplesBank SMS
+   * Extract available balance: "Av_Bal: Rs. 89996.98" or "Avl.Bal: LKR 89,996.98"
    */
   function extractBalance(text) {
-    // Try multiple known balance label patterns
     const patterns = [
-      /Av_Bal[:\s]+Rs\.?\s*([0-9][0-9,]*\.?\d*)/i,
-      /Av\.?\s*Bal[:\s]+Rs\.?\s*([0-9][0-9,]*\.?\d*)/i,
-      /Available\s+Balance[:\s]+Rs\.?\s*([0-9][0-9,]*\.?\d*)/i,
-      /Avl\.?\s*Bal[:\s]+Rs\.?\s*([0-9][0-9,]*\.?\d*)/i
+      /Av_Bal[:\s]+(?:Rs\.?|LKR)?\s*([0-9][0-9,]*\.?\d*)/i,
+      /Av\.?\s*Bal[:\s]+(?:Rs\.?|LKR)?\s*([0-9][0-9,]*\.?\d*)/i,
+      /Available\s+Balance[:\s]+(?:Rs\.?|LKR)?\s*([0-9][0-9,]*\.?\d*)/i,
+      /Avl\.?\s*Bal[:\s]+(?:Rs\.?|LKR)?\s*([0-9][0-9,]*\.?\d*)/i
     ];
     for (const pattern of patterns) {
       const match = text.match(pattern);
