@@ -1,6 +1,6 @@
 /**
  * Main App Controller
- * Initializes and orchestrates all modules for the PB Expense Tracker.
+ * Initializes and orchestrates all modules for the PB Transaction Tracker.
  */
 
 const App = (() => {
@@ -48,10 +48,10 @@ const App = (() => {
     if (status === 'granted') {
       await scanSms();
     } else if (status === 'unavailable') {
-      showToast('SMS reading not available in browser. Use manual paste below.', 'info');
+      showToast('SMS reading not available in browser.', 'info');
       showDashboard();
     } else {
-      showToast('SMS permission denied. You can still paste SMS manually.', 'error');
+      showToast('SMS permission denied.', 'error');
       showDashboard();
     }
   }
@@ -72,44 +72,8 @@ const App = (() => {
       showToast(`Imported ${added} new transactions (${expenses.length - added} duplicates skipped)`, 'success');
     } catch (e) {
       console.error('SMS scan failed:', e);
-      showToast('Failed to read SMS. Use manual paste below.', 'error');
+      showToast('Failed to read SMS.', 'error');
       showDashboard();
-    }
-  }
-
-  // ===== MANUAL SMS PASTE =====
-  function handleParseSms() {
-    const input = document.getElementById('smsInput');
-    const text = input.value.trim();
-    const resultEl = document.getElementById('parseResult');
-
-    if (!text) {
-      resultEl.className = 'parse-result error';
-      resultEl.textContent = 'Please paste an SMS message first';
-      return;
-    }
-
-    const expenses = SmsParser.parseManualInput(text);
-    if (expenses.length === 0) {
-      resultEl.className = 'parse-result error';
-      resultEl.textContent = '❌ Could not parse. Check the SMS format.';
-      return;
-    }
-
-    expenses.forEach(exp => {
-      exp.category = Categorizer.categorize(exp.description, exp.type);
-    });
-
-    const added = Store.addMultiple(expenses);
-    if (added > 0) {
-      resultEl.className = 'parse-result success';
-      resultEl.textContent = `✅ Added ${added} transaction${added > 1 ? 's' : ''}`;
-      input.value = '';
-      refreshDashboard();
-      showToast(`${added} transaction${added > 1 ? 's' : ''} added successfully!`, 'success');
-    } else {
-      resultEl.className = 'parse-result error';
-      resultEl.textContent = '⚠️ Duplicate — already exists';
     }
   }
 
@@ -173,7 +137,7 @@ const App = (() => {
         <div class="empty-state">
           <div class="empty-icon">📭</div>
           <h4>No transactions found</h4>
-          <p>Paste a People's Bank SMS above to get started</p>
+          <p>Tap "Scan SMS" to import your People's Bank transactions</p>
         </div>`;
       return;
     }
@@ -322,7 +286,7 @@ const App = (() => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `pb_expenses_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `pb_transactions_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     showToast('Exported to CSV', 'success');
@@ -357,16 +321,11 @@ const App = (() => {
   // ===== EVENT BINDING =====
   function bindEvents() {
     document.getElementById('btnGrantPermission').addEventListener('click', handleGrantPermission);
-    document.getElementById('btnParseSms').addEventListener('click', handleParseSms);
-    document.getElementById('btnClearInput').addEventListener('click', () => {
-      document.getElementById('smsInput').value = '';
-      document.getElementById('parseResult').textContent = '';
-    });
     document.getElementById('btnRefreshSms').addEventListener('click', async () => {
       if (SmsReader.isNative()) {
         await scanSms();
       } else {
-        showToast('SMS scanning available only on Android app. Use paste below.', 'info');
+        showToast('SMS scanning available only on Android app.', 'info');
       }
     });
     document.getElementById('btnExport').addEventListener('click', exportData);
