@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <meta name="description" content="People's Bank Expense Tracker - Auto-reads bank SMS to track your spending">
-  <meta name="theme-color" content="#0a0e27">
+  <meta name="description" content="PB Transaction Tracker - Auto-reads PeoplesBank SMS to track your spending">
+  <meta name="theme-color" content="#0c1222">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>PB Expense Tracker</title>
+  <title>PB Transaction Tracker</title>
+  <link rel="icon" type="image/png" href="img/logo.png">
   <link rel="stylesheet" href="css/styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
@@ -17,14 +18,14 @@
   <header class="app-header">
     <div class="header-content">
       <div class="app-logo">
-        <div class="logo-icon">🏦</div>
+        <img src="img/logo.png" alt="PB Tracker" class="logo-img">
         <div>
-          <div class="app-title">PB Expense Tracker</div>
+          <div class="app-title">PB Transaction Tracker</div>
           <div class="app-subtitle">People's Bank · Smart Analytics</div>
         </div>
       </div>
       <div class="header-actions">
-        <button class="btn btn-sm" id="btnRefreshSms" title="Scan SMS">
+        <button class="btn btn-sm btn-glow" id="btnRefreshSms" title="Scan SMS">
           <span>📱</span> <span>Scan SMS</span>
         </button>
         <button class="btn btn-sm" id="btnExport" title="Export CSV">
@@ -37,7 +38,7 @@
   <!-- ===== PERMISSION SCREEN ===== -->
   <div id="permissionScreen" class="permission-screen hidden">
     <div class="permission-card">
-      <div class="permission-icon">📱</div>
+      <img src="img/logo.png" alt="PB Tracker" class="permission-logo">
       <h2>Read Your Bank SMS</h2>
       <p>Allow the app to read your SMS messages to automatically track expenses from People's Bank transactions.</p>
       <div class="permission-features">
@@ -79,49 +80,90 @@
     <!-- Stats Cards -->
     <div class="stats-grid">
       <div class="stat-card expense fade-in fade-in-delay-1">
+        <div class="stat-icon-wrap expense-bg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        </div>
         <div class="stat-label">Total Expenses</div>
         <div class="stat-value expense-val" id="statExpense">Rs. 0.00</div>
         <div class="stat-sub" id="statExpenseCount">0 transactions</div>
       </div>
       <div class="stat-card income fade-in fade-in-delay-2">
+        <div class="stat-icon-wrap income-bg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+        </div>
         <div class="stat-label">Total Income</div>
         <div class="stat-value income-val" id="statIncome">Rs. 0.00</div>
         <div class="stat-sub" id="statIncomeCount">0 transactions</div>
       </div>
       <div class="stat-card balance fade-in fade-in-delay-3">
+        <div class="stat-icon-wrap balance-bg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/></svg>
+        </div>
         <div class="stat-label">Current Balance</div>
         <div class="stat-value balance-val" id="statBalance">Rs. 0.00</div>
         <div class="stat-sub" id="statAccount">--</div>
       </div>
-      <div class="stat-card count fade-in fade-in-delay-4">
+      <div class="stat-card top-cat fade-in fade-in-delay-4">
+        <div class="stat-icon-wrap topcat-bg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+        </div>
         <div class="stat-label">Top Category</div>
         <div class="stat-value" id="statTopCat" style="font-size:1.1rem;">--</div>
         <div class="stat-sub" id="statTopCatAmount">--</div>
       </div>
     </div>
 
-    <!-- SMS Input (Manual Fallback) -->
-    <div class="input-section fade-in" id="smsInputSection">
-      <h3>📝 Paste Bank SMS</h3>
-      <textarea class="sms-textarea" id="smsInput" 
-        placeholder="Paste your People's Bank SMS here...&#10;&#10;Example: Dear Sir/Madam, Your A/C 046-2001****10 has been debited by Rs. 1525.00 (LPAY TFR @11:41 18/05/2026).[Av_Bal: Rs. 89996.98 at the time of SMS generated]"></textarea>
-      <div class="input-actions">
-        <button class="btn btn-primary" id="btnParseSms">
-          ➕ Add Transaction
-        </button>
-        <button class="btn" id="btnClearInput">Clear</button>
-        <span class="parse-result" id="parseResult"></span>
+    <!-- Transactions Card (with search & filters integrated) -->
+    <div class="transactions-section fade-in">
+      <div class="transactions-header">
+        <h3>📋 Transactions <span class="tx-count" id="txCount">0</span></h3>
+        <button class="btn btn-sm btn-danger" id="btnClearAll">🗑️ Clear All</button>
+      </div>
+      <div class="filters-bar">
+        <input type="search" class="search-input" id="searchInput" placeholder="Search transactions...">
+        <div class="filter-group">
+          <label class="filter-label">Period</label>
+          <select class="filter-select" id="filterPeriod">
+            <option value="all">All Time</option>
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month" selected>This Month</option>
+            <option value="3months">Last 3 Months</option>
+            <option value="year">This Year</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div class="filter-group hidden" id="customDateGroup">
+          <input type="date" class="filter-input" id="filterStartDate">
+          <span style="color:var(--text-muted)">to</span>
+          <input type="date" class="filter-input" id="filterEndDate">
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Category</label>
+          <select class="filter-select" id="filterCategory">
+            <option value="All">All</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Type</label>
+          <select class="filter-select" id="filterType">
+            <option value="All">All</option>
+            <option value="debit">Expenses</option>
+            <option value="credit">Income</option>
+          </select>
+        </div>
+      </div>
+      <div class="transactions-list" id="transactionsList">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">📭</div>
+          <h4>No transactions yet</h4>
+          <p>Tap "Scan SMS" to import your People's Bank transactions</p>
+        </div>
       </div>
     </div>
 
     <!-- Charts -->
     <div class="charts-grid">
-      <div class="chart-card fade-in">
-        <div class="chart-title">📊 Spending by Category</div>
-        <div class="chart-container">
-          <canvas id="categoryChart"></canvas>
-        </div>
-      </div>
       <div class="chart-card fade-in">
         <div class="chart-title">📈 Daily Spending Trend (Last 30 Days)</div>
         <div class="chart-container">
@@ -134,55 +176,10 @@
           <canvas id="monthlyChart"></canvas>
         </div>
       </div>
-    </div>
-
-    <!-- Filters -->
-    <div class="filters-bar">
-      <input type="search" class="search-input" id="searchInput" placeholder="Search transactions...">
-      <div class="filter-group">
-        <label class="filter-label">Period</label>
-        <select class="filter-select" id="filterPeriod">
-          <option value="all">All Time</option>
-          <option value="today">Today</option>
-          <option value="week">This Week</option>
-          <option value="month" selected>This Month</option>
-          <option value="3months">Last 3 Months</option>
-          <option value="year">This Year</option>
-          <option value="custom">Custom</option>
-        </select>
-      </div>
-      <div class="filter-group hidden" id="customDateGroup">
-        <input type="date" class="filter-input" id="filterStartDate">
-        <span style="color:var(--text-muted)">to</span>
-        <input type="date" class="filter-input" id="filterEndDate">
-      </div>
-      <div class="filter-group">
-        <label class="filter-label">Category</label>
-        <select class="filter-select" id="filterCategory">
-          <option value="All">All</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <label class="filter-label">Type</label>
-        <select class="filter-select" id="filterType">
-          <option value="All">All</option>
-          <option value="debit">Expenses</option>
-          <option value="credit">Income</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Transactions List -->
-    <div class="transactions-section fade-in">
-      <div class="transactions-header">
-        <h3>📋 Transactions <span class="tx-count" id="txCount">0</span></h3>
-        <button class="btn btn-sm btn-danger" id="btnClearAll">🗑️ Clear All</button>
-      </div>
-      <div class="transactions-list" id="transactionsList">
-        <div class="empty-state" id="emptyState">
-          <div class="empty-icon">📭</div>
-          <h4>No transactions yet</h4>
-          <p>Paste a People's Bank SMS above or grant SMS permission to get started</p>
+      <div class="chart-card chart-card-full fade-in">
+        <div class="chart-title">📊 Spending by Category</div>
+        <div class="chart-container" style="height:300px;">
+          <canvas id="categoryChart"></canvas>
         </div>
       </div>
     </div>
