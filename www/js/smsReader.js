@@ -72,11 +72,14 @@ const SmsReader = (() => {
 
   /**
    * Read and filter only People's Bank SMS messages
-   * Filters by keywords that identify PB transaction SMS
+   * Filters by address 'PeoplesBank' and transaction keywords
    */
   async function readBankSms() {
     const allSms = await readAllSms();
     return allSms.filter(sms => {
+      if (sms.address !== 'PeoplesBank') {
+        return false;
+      }
       const body = (sms.body || '').toLowerCase();
       return (
         body.includes('your a/c') &&
