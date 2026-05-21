@@ -33,12 +33,29 @@ const Store = (() => {
 
   function getAll() { return [..._expenses]; }
 
+  function getLocalDateString(dateInput) {
+    if (!dateInput) return '';
+    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+      return dateInput;
+    }
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return '';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   function getFiltered({ startDate, endDate, category, type, search } = {}) {
     let result = [..._expenses];
-    if (startDate) result = result.filter(e => new Date(e.date) >= new Date(startDate));
-    if (endDate) {
-      const end = new Date(endDate); end.setHours(23,59,59,999);
-      result = result.filter(e => new Date(e.date) <= end);
+    const startStr = startDate ? getLocalDateString(startDate) : null;
+    const endStr = endDate ? getLocalDateString(endDate) : null;
+
+    if (startStr) {
+      result = result.filter(e => getLocalDateString(e.date) >= startStr);
+    }
+    if (endStr) {
+      result = result.filter(e => getLocalDateString(e.date) <= endStr);
     }
     if (category && category !== 'All') result = result.filter(e => e.category === category);
     if (type && type !== 'All') result = result.filter(e => e.type === type);
@@ -84,10 +101,10 @@ const Store = (() => {
     const now = new Date();
     for (let i = 29; i >= 0; i--) {
       const d = new Date(now); d.setDate(d.getDate() - i);
-      dailySpending[d.toISOString().split('T')[0]] = 0;
+      dailySpending[getLocalDateString(d)] = 0;
     }
     expenses.filter(e => e.type === 'debit').forEach(e => {
-      const key = new Date(e.date).toISOString().split('T')[0];
+      const key = getLocalDateString(e.date);
       if (dailySpending.hasOwnProperty(key)) dailySpending[key] += e.amount;
     });
 

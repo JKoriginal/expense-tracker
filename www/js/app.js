@@ -171,7 +171,13 @@ const App = (() => {
     }).join('');
   }
 
-  // ===== FILTERS =====
+  function getLocalDateString(d) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   function getActiveFilters() {
     const period = document.getElementById('filterPeriod').value;
     const category = document.getElementById('filterCategory').value;
@@ -183,26 +189,27 @@ const App = (() => {
 
     switch (period) {
       case 'today':
-        filters.startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+        filters.startDate = getLocalDateString(now);
+        filters.endDate = getLocalDateString(now);
         break;
       case 'week':
         const weekStart = new Date(now);
         weekStart.setDate(now.getDate() - now.getDay());
-        filters.startDate = weekStart.toISOString();
+        filters.startDate = getLocalDateString(weekStart);
         break;
       case 'month':
-        filters.startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        filters.startDate = getLocalDateString(new Date(now.getFullYear(), now.getMonth(), 1));
         break;
       case '3months':
-        filters.startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString();
+        filters.startDate = getLocalDateString(new Date(now.getFullYear(), now.getMonth() - 3, 1));
         break;
       case 'year':
-        filters.startDate = new Date(now.getFullYear(), 0, 1).toISOString();
+        filters.startDate = getLocalDateString(new Date(now.getFullYear(), 0, 1));
         break;
       case 'custom':
         const sd = document.getElementById('filterStartDate').value;
         const ed = document.getElementById('filterEndDate').value;
-        if (sd) filters.startDate = new Date(sd).toISOString();
+        if (sd) filters.startDate = sd;
         if (ed) filters.endDate = ed;
         break;
     }
