@@ -125,7 +125,8 @@ const SmsParser = (() => {
    * Extract account number: "A/C 046-2001****10" or "Card ending 1234"
    */
   function extractAccount(text) {
-    const match = text.match(/A\/C\s+([\d\-\*]+)/i);
+    // Matches "A/C 123", "A/C No. 123", "A/C No 123", "A/C: 123", "A/C-123", "A/C123"
+    const match = text.match(/A\/C(?:\s*No\.?|\s*No|\s*:\s*|\s*-\s*|\s+)?\s*([\d\-\*]+)/i);
     if (match) return match[1];
 
     const cardMatch = text.match(/card\s+(?:ending|no\.)?\s*([\d\-\*]+)/i);
@@ -145,8 +146,8 @@ const SmsParser = (() => {
    * Extract amount: "Rs. 1525.00", "LKR 1,500.00" etc.
    */
   function extractAmount(text) {
-    // Primary: match amount right after "debited by Rs." or "credited by Rs."
-    let match = text.match(/(?:debited|credited)\s+by\s+Rs\.?\s*([0-9][0-9,]*\.?\d*)/i);
+    // Primary: match amount right after debited/credited (with optional "by" and optional currency "Rs./LKR")
+    let match = text.match(/(?:debited|credited)\s+(?:by\s+)?(?:Rs\.?|LKR)?\s*([0-9][0-9,]*\.?\d*)/i);
     if (match) {
       return parseFloat(match[1].replace(/,/g, ''));
     }
@@ -158,7 +159,7 @@ const SmsParser = (() => {
     }
 
     // Fallback: match any LKR or Rs. before the balance keyword
-    const parts = text.split(/(?:Av_Bal|Av\.?\s*Bal|Available\s+Balance|Avl\.?\s*Bal)/i);
+    const parts = text.split(/(?:Av_Bal|Av\.?\s*Bal|Available\s+Balance|Available\s+Bal|Avail\.?\s*Bal|Avl\.?\s*Bal|Bal(?:ance)?)/i);
     const firstPart = parts[0];
     const amountMatch = firstPart.match(/(?:LKR|Rs\.?)\s*([0-9][0-9,]*\.?\d*)/i);
     if (amountMatch) {
@@ -235,10 +236,13 @@ const SmsParser = (() => {
    */
   function extractBalance(text) {
     const patterns = [
-      /Av_Bal[:\s]+(?:Rs\.?|LKR)?\s*([0-9][0-9,]*\.?\d*)/i,
-      /Av\.?\s*Bal[:\s]+(?:Rs\.?|LKR)?\s*([0-9][0-9,]*\.?\d*)/i,
-      /Available\s+Balance[:\s]+(?:Rs\.?|LKR)?\s*([0-9][0-9,]*\.?\d*)/i,
-      /Avl\.?\s*Bal[:\s]+(?:Rs\.?|LKR)?\s*([0-9][0-9,]*\.?\d*)/i
+      /Av_Bal[:\s\.]+(?:Rs\.?|LKR)?\s*([0-9][0-9,]*\.?\d*)/i,
+      /Av\.?\s*Bal[:\s\.]+(?:Rs\.?|LKR)?\s*([0-9][0-9,]*\.?\d*)/i,
+      /Available\s+Balance[:\s\.]+(?:Rs\.?|LKR)?\s*([0-9][0-9,]*\.?\d*)/i,
+      /Available\s+Bal[:\s\.]+(?:Rs\.?|LKR)?\s*([0-9][0-9,]*\.?\d*)/i,
+      /Avail\.?\s*Bal[:\s\.]+(?:Rs\.?|LKR)?\s*([0-9][0-9,]*\.?\d*)/i,
+      /Avl\.?\s*Bal[:\s\.]+(?:Rs\.?|LKR)?\s*([0-9][0-9,]*\.?\d*)/i,
+      /Bal(?:ance)?[:\s\.]+(?:Rs\.?|LKR)?\s*([0-9][0-9,]*\.?\d*)/i
     ];
     for (const pattern of patterns) {
       const match = text.match(pattern);

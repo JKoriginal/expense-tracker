@@ -57,7 +57,7 @@ body {
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-bottom: 1px solid var(--glass-border);
-  padding: 0.7rem 1.5rem;
+  padding: calc(0.7rem + env(safe-area-inset-top, 0px)) 1.5rem 0.7rem;
 }
 .header-content {
   max-width: 1280px; margin: 0 auto;

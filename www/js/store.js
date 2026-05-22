@@ -117,17 +117,39 @@ const Store = (() => {
     });
 
     // Current balance: always use the most recent transaction by date from ALL data
-    // (not filtered), since the balance represents the latest account state
+    // (not filtered), since the balance represents the latest account state.
+    // If the newest transaction doesn't have an explicit balance (e.g. parsed SMS lacked it
+    // or manual entry), we calculate the running balance forward from the latest known balance.
     const allSorted = [..._expenses]
-      .filter(e => e.balance != null)
       .sort((a, b) => new Date(b.date) - new Date(a.date));
-    const latestWithBal = allSorted.length > 0 ? allSorted[0] : null;
+
+    let latestBalance = null;
+    if (allSorted.length > 0) {
+      const firstWithBalIdx = allSorted.findIndex(e => e.balance != null);
+      if (firstWithBalIdx === 0) {
+        latestBalance = allSorted[0].balance;
+      } else if (firstWithBalIdx > 0) {
+        let balance = allSorted[firstWithBalIdx].balance;
+        for (let j = firstWithBalIdx - 1; j >= 0; j--) {
+          const e = allSorted[j];
+          if (e.type === 'credit') {
+            balance += e.amount;
+          } else {
+            balance -= e.amount;
+          }
+        }
+        latestBalance = balance;
+      } else {
+        // Fall back to overall net balance if no transactions have an explicit balance
+        latestBalance = totalCredit - totalDebit;
+      }
+    }
 
     const topCat = Object.entries(categoryBreakdown).sort((a,b) => b[1]-a[1])[0];
 
     return {
       totalDebit, totalCredit, netBalance: totalCredit - totalDebit,
-      latestBalance: latestWithBal ? latestWithBal.balance : null,
+      latestBalance: latestBalance,
       transactionCount: expenses.length,
       categoryBreakdown, dailySpending, monthlyData,
       topCategory: topCat ? { name: topCat[0], amount: topCat[1] } : null
