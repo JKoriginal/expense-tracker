@@ -106,12 +106,16 @@ const SmsParser = (() => {
     
     // Check for currency indicator (Rs. or LKR)
     const hasCurrency = lower.includes('rs.') || lower.includes('lkr');
+    if (!hasCurrency) return false;
     
-    // Check for standard transaction keywords or card payment keywords
-    const isDebitOrCredit = lower.includes('debited') || lower.includes('credited');
-    const isCardPayment = lower.includes('card payment') || lower.includes('card transaction') || lower.includes('payment successful') || lower.includes('purchase successful');
+    // Check for any keyword indicating a transaction (debit, credit, payment, transfer, refund, etc.)
+    const keywords = [
+      'debited', 'credited', 'refund', 'deposit', 'received', 'withdrawn', 
+      'withdrawal', 'transferred', 'transfer', 'payment', 'purchase', 
+      'charged', 'spent', 'interest', 'charge'
+    ];
     
-    return hasCurrency && (isDebitOrCredit || isCardPayment);
+    return keywords.some(kw => lower.includes(kw));
   }
 
   /**
@@ -138,7 +142,17 @@ const SmsParser = (() => {
    */
   function extractType(text) {
     const lower = text.toLowerCase();
-    if (lower.includes('credited') || lower.includes('refund')) return 'credit';
+    
+    // Credit indicators
+    const creditKeywords = ['credited', 'refund', 'deposit', 'received', 'interest', 'inward'];
+    if (creditKeywords.some(kw => lower.includes(kw))) {
+      // Check if it's an outgoing transfer or payment that happens to contain a credit keyword (e.g., "debited for transfer")
+      if (lower.includes('debited') || lower.includes('withdrawn') || lower.includes('transferred to')) {
+        return 'debit';
+      }
+      return 'credit';
+    }
+    
     return 'debit';
   }
 
